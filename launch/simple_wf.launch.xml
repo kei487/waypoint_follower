@@ -1,0 +1,10 @@
+<launch>
+
+  <arg name ="waypoint_yaml"  default="$(find-pkg-share ike_launch)/config/waypoint.yaml"/>
+
+  <node pkg="simple_waypoint_follower" exec="simple_wf" >
+      <param name="waypoint_yaml_path"            value="$(var waypoint_yaml)"/>
+      <param name="waypoint_radius"               value="0.5"/>
+  </node>
+
+</launch>

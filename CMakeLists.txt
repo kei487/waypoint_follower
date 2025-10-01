@@ -1,23 +1,21 @@
-project(ike_waypoint_follower)
+project(simple_waypoint_follower)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-O3 -Wall -Wextra -Wpedantic)
 endif()
 
 find_package(ament_cmake_auto REQUIRED)
+find_package(rclcpp REQUIRED)
 
 ament_auto_find_build_dependencies()
 
-ament_auto_add_library(${PROJECT_NAME} SHARED
+ament_auto_add_executable(simple_wf
   src/ike_waypoint_follower.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} ${YAML_CPP_LIBRARIES})
-
-rclcpp_components_register_nodes(${PROJECT_NAME}
-  PLUGIN "ike_nav::IkeWaypointFollower"
-  EXECUTABLE ${PROJECT_NAME}
-)
+install(TARGETS simple_wf DESTINATION lib/${PROJECT_NAME} )
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

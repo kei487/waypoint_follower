@@ -1,0 +1,40 @@
+waypoints:
+  - id: 1
+    position:
+      x: 8.722166061401367
+      y: 8.352712631225586
+    euler_angle:
+      z: 0.0
+    functions:
+      - function: variable_waypoint_radius
+        waypoint_radius: 0.5
+  - id: 2
+    position:
+      x: 11.304292678833008
+      y: 8.42270278930664
+    euler_angle:
+      z: 0.0
+  - id: 3
+    position:
+      x: 11.815327644348145
+      y: 10.003898620605469
+    euler_angle:
+      z: 0.0
+  - id: 4
+    position:
+      x: 11.34167766571045
+      y: 11.579950332641602
+    euler_angle:
+      z: 0.0
+  - id: 5
+    position:
+      x: 8.810730934143066
+      y: 11.667123794555664
+    euler_angle:
+      z: 0.0  
+  - id: 6
+    position:
+      x: 7.720865249633789
+      y: 10.004589080810547
+    euler_angle:
+      z: 0.0
