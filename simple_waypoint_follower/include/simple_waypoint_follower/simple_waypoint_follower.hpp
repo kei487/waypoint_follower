@@ -6,10 +6,10 @@
 // #include "simple_waypoint_follower_parameter/simple_waypoint_follower_parameter.hpp"
 
 #include <rclcpp/rclcpp.hpp>
-#include <rclcpp_action/rclcpp_action.hpp>
+//#include <rclcpp_action/rclcpp_action.hpp>
 
 //#include "simple_waypoint_follower_msgs/action/navigate_to_goal.hpp"
-#include "simple_waypoint_follower_msgs/msg/Waypoints.hpp"
+#include "simple_waypoint_follower_msgs/msg/waypoints.hpp"
 // #include "simple_waypoint_follower_msgs/srv/load_waypoint_yaml.hpp"
 #include <geometry_msgs/msg/pose_stamped.hpp>
 //#include <std_srvs/srv/trigger.hpp>
@@ -48,7 +48,7 @@ protected:
 
 private:
   // clang-format off
-  rclcpp::Publisher<simple_waypoint_follower_msgs::msg::Waypoints>::SharedPtr goal_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pub_;
 //  rclcpp::Publisher<simple_waypoint_follower_msgs::msg::Waypoints>::SharedPtr waypoints_pub_;
 //  rclcpp::Subscription<simple_waypoint_follower_msgs::msg::Waypoints>::SharedPtr waypoints_sub_;
 //  rclcpp::Service<simple_waypoint_follower_msgs::srv::LoadWaypointYaml>::SharedPtr load_waypoint_yaml_service_server_;
@@ -60,8 +60,8 @@ private:
 
   rclcpp::TimerBase::SharedPtr loop_timer_;
 
-  std::shared_ptr<simple_waypoint_follower::ParamListener> param_listener_;
-  simple_waypoint_follower::Params params_;
+//  std::shared_ptr<simple_waypoint_follower::ParamListener> param_listener_;
+//  simple_waypoint_follower::Params params_;
 
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;

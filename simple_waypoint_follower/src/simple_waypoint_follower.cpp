@@ -26,12 +26,19 @@ SimpleWaypointFollower::SimpleWaypointFollower(const rclcpp::NodeOptions & optio
 
 void SimpleWaypointFollower::getParam()
 {
+  /*
   this->param_listener_ =
     std::make_shared<simple_waypoint_follower::ParamListener>(this->get_node_parameters_interface());
   this->params_ = param_listener_->get_params();
 
   waypoint_yaml_path_ = this->params_.waypoint_yaml_path;
   waypoint_radius_ = this->params_.waypoint_radius;
+  */
+  declare_parameter("waypoint_yaml_path", "waypoint.yaml");
+	declare_parameter("waypoint_radius",0.5);
+
+	waypoint_yaml_path_ = get_parameter("theta_cell_num").as_string();
+  waypoint_radius_ = get_parameter("theta_cell_num").as_double();
 }
 
 void SimpleWaypointFollower::initTf()
@@ -244,7 +251,12 @@ void SimpleWaypointFollower::sendGoal(const geometry_msgs::msg::Pose & goal)
     navigate_to_goal_action_client_->async_send_goal(goal_msg, send_goal_options);
   */
 
-  goal_pub_ -> publish(goal);
+  auto goal_stamp = geometry_msgs::msg::PoseStamped();
+  goal_stamp.header.frame_id = "map";
+  goal_stamp.header.stamp = rclcpp::Time();
+  goal_stamp.pose = goal;
+
+  goal_pub_ -> publish(goal_stamp);
   RCLCPP_INFO(this->get_logger(), "Sent goal");
 }
 
@@ -293,4 +305,11 @@ void SimpleWaypointFollower::loop()
 
 }  // namespace simple_waypoint_follower
 
-
+int main(int argc, char **argv)
+{
+	rclcpp::init(argc,argv);
+  rclcpp::NodeOptions opt;
+	auto node = std::make_shared<simple_waypoint_follower::SimpleWaypointFollower>(opt);
+	rclcpp::spin(node);
+	return 0;
+}

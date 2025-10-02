@@ -9,6 +9,11 @@ find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav2_util REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(simple_waypoint_follower_msgs REQUIRED)
 
 ament_auto_find_build_dependencies()
 
@@ -16,20 +21,9 @@ ament_auto_add_executable(simple_wf
   src/simple_waypoint_follower.cpp
 )
 
-rosidl_generate_interfaces(simple_waypoint_follower_msgs
-  "msg/function/VariableWaypointRadius.msg"
-  "msg/Function.msg"
-  "msg/Waypoint.msg"
-  "msg/Waypoints.msg"
-  DEPENDENCIES builtin_interfaces std_msgs geometry_msgs nav_msgs
+target_link_libraries(simple_wf
+  yaml-cpp
 )
-
-rosidl_get_typesupport_target(
-  cpp_typesupport_target "simple_waypoint_follower_msgs" "rosidl_typesupport_cpp"
-)
-
-ament_export_dependencies(rosidl_default_runtime)
-
 
 install(TARGETS simple_wf DESTINATION lib/${PROJECT_NAME} )
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
@@ -42,4 +36,5 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+ament_export_include_directories(include)
 ament_auto_package()
