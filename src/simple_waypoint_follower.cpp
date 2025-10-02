@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "ike_waypoint_follower/ike_waypoint_follower.hpp"
+#include "simple_waypoint_follower/simple_waypoint_follower.hpp"
 
 #include <nav2_util/robot_utils.hpp>
 
 #include <yaml-cpp/yaml.h>
 
-namespace ike_nav
+namespace simple_waypoint_follower
 {
 
-IkeWaypointFollower::IkeWaypointFollower(const rclcpp::NodeOptions & options)
-: Node("ike_waypoint_follower", options)
+SimpleWaypointFollower::SimpleWaypointFollower(const rclcpp::NodeOptions & options)
+: Node("simple_waypoint_follower", options)
 {
   getParam();
 
@@ -24,17 +24,17 @@ IkeWaypointFollower::IkeWaypointFollower(const rclcpp::NodeOptions & options)
 //  readWaypointYaml();
 }
 
-void IkeWaypointFollower::getParam()
+void SimpleWaypointFollower::getParam()
 {
   this->param_listener_ =
-    std::make_shared<ike_waypoint_follower::ParamListener>(this->get_node_parameters_interface());
+    std::make_shared<simple_waypoint_follower::ParamListener>(this->get_node_parameters_interface());
   this->params_ = param_listener_->get_params();
 
   waypoint_yaml_path_ = this->params_.waypoint_yaml_path;
   waypoint_radius_ = this->params_.waypoint_radius;
 }
 
-void IkeWaypointFollower::initTf()
+void SimpleWaypointFollower::initTf()
 {
   tf_buffer_.reset();
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
@@ -42,15 +42,15 @@ void IkeWaypointFollower::initTf()
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
-void IkeWaypointFollower::initPublisher()
+void SimpleWaypointFollower::initPublisher()
 {
   waypoints_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
     "goal_pose", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 }
 /*
-void IkeWaypointFollower::initSubscription()
+void SimpleWaypointFollower::initSubscription()
 {
-  auto waypoints_callback = [&](const ike_nav_msgs::msg::Waypoints::ConstSharedPtr msg) {
+  auto waypoints_callback = [&](const simple_waypoint_follower_msgs::msg::Waypoints::ConstSharedPtr msg) {
     if (!msg->waypoints.size()) {
       this->loop_timer_->cancel();
       this->cancelGoal();
@@ -66,18 +66,18 @@ void IkeWaypointFollower::initSubscription()
     waypoints_ = *msg;
   };
 
-  waypoints_sub_ = this->create_subscription<ike_nav_msgs::msg::Waypoints>(
+  waypoints_sub_ = this->create_subscription<simple_waypoint_follower_msgs::msg::Waypoints>(
     "waypoints", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable(), waypoints_callback);
 }
 */
 /*
-void IkeWaypointFollower::initServiceServer()
+void SimpleWaypointFollower::initServiceServer()
 {
   auto load_waypoint_yaml =
     [this](
       const std::shared_ptr<rmw_request_id_t> request_header,
-      std::shared_ptr<ike_nav_msgs::srv::LoadWaypointYaml::Request> request,
-      std::shared_ptr<ike_nav_msgs::srv::LoadWaypointYaml::Response> response) -> void {
+      std::shared_ptr<simple_waypoint_follower_msgs::srv::LoadWaypointYaml::Request> request,
+      std::shared_ptr<simple_waypoint_follower_msgs::srv::LoadWaypointYaml::Response> response) -> void {
     (void)request_header;
 
     this->loop_timer_->reset();
@@ -90,7 +90,7 @@ void IkeWaypointFollower::initServiceServer()
     response->success = true;
   };
   load_waypoint_yaml_service_server_ =
-    create_service<ike_nav_msgs::srv::LoadWaypointYaml>("load_waypoint_yaml", load_waypoint_yaml);
+    create_service<simple_waypoint_follower_msgs::srv::LoadWaypointYaml>("load_waypoint_yaml", load_waypoint_yaml);
 
   auto start_waypoint_follower =
     [this](
@@ -142,22 +142,22 @@ void IkeWaypointFollower::initServiceServer()
     create_service<std_srvs::srv::Trigger>("cancel_waypoint_follower", cancel_waypoint_follower);
 }
 
-void IkeWaypointFollower::initActionClient()
+void SimpleWaypointFollower::initActionClient()
 {
   navigate_to_goal_action_client_ = rclcpp_action::create_client<NavigateToGoal>(
     this->get_node_base_interface(), this->get_node_graph_interface(),
     this->get_node_logging_interface(), this->get_node_waitables_interface(), "navigate_to_goal");
 }
 */
-void IkeWaypointFollower::initTimer()
+void SimpleWaypointFollower::initTimer()
 {
   using namespace std::chrono_literals;
 
   loop_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds{100ms}, std::bind(&IkeWaypointFollower::loop, this));
+    std::chrono::milliseconds{100ms}, std::bind(&SimpleWaypointFollower::loop, this));
 }
 /*
-void IkeWaypointFollower::readWaypointYaml()
+void SimpleWaypointFollower::readWaypointYaml()
 {
   YAML::Node waypoints_yaml = YAML::LoadFile(waypoint_yaml_path_);
 
@@ -167,7 +167,7 @@ void IkeWaypointFollower::readWaypointYaml()
 
   if (!waypoints_yaml["waypoints"].IsNull()) {
     for (const auto & waypoint_yaml : waypoints_yaml["waypoints"]) {
-      ike_nav_msgs::msg::Waypoint waypoint;
+      simple_waypoint_follower_msgs::msg::Waypoint waypoint;
 
       waypoint.id = waypoint_yaml["id"].as<uint32_t>();
       waypoint.pose.position.x = waypoint_yaml["position"]["x"].as<double>();
@@ -195,7 +195,7 @@ void IkeWaypointFollower::readWaypointYaml()
   waypoints_pub_->publish(waypoints_);
 }
 */
-void IkeWaypointFollower::getMapFrameRobotPose(
+void SimpleWaypointFollower::getMapFrameRobotPose(
   geometry_msgs::msg::PoseStamped & map_frame_robot_pose)
 {
   geometry_msgs::msg::PoseStamped pose;
@@ -205,8 +205,8 @@ void IkeWaypointFollower::getMapFrameRobotPose(
   }
 }
 
-bool IkeWaypointFollower::isInsideWaypointArea(
-  const geometry_msgs::msg::Pose & robot_pose, const ike_nav_msgs::msg::Waypoint & waypoint)
+bool SimpleWaypointFollower::isInsideWaypointArea(
+  const geometry_msgs::msg::Pose & robot_pose, const simple_waypoint_follower_msgs::msg::Waypoint & waypoint)
 {
   auto distance = std::hypot(
     robot_pose.position.x - waypoint.pose.position.x,
@@ -219,7 +219,7 @@ bool IkeWaypointFollower::isInsideWaypointArea(
   return false;
 }
 
-void IkeWaypointFollower::sendGoal(const geometry_msgs::msg::Pose & goal)
+void SimpleWaypointFollower::sendGoal(const geometry_msgs::msg::Pose & goal)
 {
   /*
   using namespace std::chrono_literals;
@@ -249,7 +249,7 @@ void IkeWaypointFollower::sendGoal(const geometry_msgs::msg::Pose & goal)
 }
 
 /*
-void IkeWaypointFollower::cancelGoal()
+void SimpleWaypointFollower::cancelGoal()
 {
   using namespace std::chrono_literals;
 
@@ -265,9 +265,9 @@ void IkeWaypointFollower::cancelGoal()
   auto goal_handle_future = navigate_to_goal_action_client_->async_cancel_all_goals();
 }
 */
-void IkeWaypointFollower::loop()
+void SimpleWaypointFollower::loop()
 {
-  RCLCPP_INFO(get_logger(), "Run IkeWaypointFollower::loop");
+  RCLCPP_INFO(get_logger(), "Run SimpleWaypointFollower::loop");
   /*
   if (!waypoints_.waypoints.size()) {
     this->loop_timer_->cancel();
@@ -291,6 +291,6 @@ void IkeWaypointFollower::loop()
   }
 }
 
-}  // namespace ike_nav
+}  // namespace simple_waypoint_follower
 
 

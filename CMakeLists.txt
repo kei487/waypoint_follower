@@ -13,6 +13,21 @@ ament_auto_add_executable(simple_wf
   src/ike_waypoint_follower.cpp
 )
 
+rosidl_generate_interfaces(simple_waypoint_follower_msgs
+  "msg/function/VariableWaypointRadius.msg"
+  "msg/Function.msg"
+  "msg/Waypoint.msg"
+  "msg/Waypoints.msg"
+  DEPENDENCIES builtin_interfaces std_msgs geometry_msgs nav_msgs
+)
+
+rosidl_get_typesupport_target(
+  cpp_typesupport_target "simple_waypoint_follower_msgs" "rosidl_typesupport_cpp"
+)
+
+ament_export_dependencies(rosidl_default_runtime)
+
+
 install(TARGETS simple_wf DESTINATION lib/${PROJECT_NAME} )
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
