@@ -16,7 +16,7 @@ SimpleWaypointFollower::SimpleWaypointFollower(const rclcpp::NodeOptions & optio
 
   initTf();
   initPublisher();
-  initSubscription();
+//  initSubscription();
 //  initServiceServer();
 //  initActionClient();
   initTimer();
@@ -44,7 +44,7 @@ void SimpleWaypointFollower::initTf()
 
 void SimpleWaypointFollower::initPublisher()
 {
-  waypoints_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
+  goal_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
     "goal_pose", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 }
 /*
@@ -156,7 +156,7 @@ void SimpleWaypointFollower::initTimer()
   loop_timer_ = this->create_wall_timer(
     std::chrono::milliseconds{100ms}, std::bind(&SimpleWaypointFollower::loop, this));
 }
-/*
+
 void SimpleWaypointFollower::readWaypointYaml()
 {
   YAML::Node waypoints_yaml = YAML::LoadFile(waypoint_yaml_path_);
@@ -192,9 +192,9 @@ void SimpleWaypointFollower::readWaypointYaml()
     }
   }
 
-  waypoints_pub_->publish(waypoints_);
+  //waypoints_pub_->publish(waypoints_);
 }
-*/
+
 void SimpleWaypointFollower::getMapFrameRobotPose(
   geometry_msgs::msg::PoseStamped & map_frame_robot_pose)
 {
@@ -244,7 +244,7 @@ void SimpleWaypointFollower::sendGoal(const geometry_msgs::msg::Pose & goal)
     navigate_to_goal_action_client_->async_send_goal(goal_msg, send_goal_options);
   */
 
-  pub_goal_ -> publish(goal);
+  goal_pub_ -> publish(goal);
   RCLCPP_INFO(this->get_logger(), "Sent goal");
 }
 

@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.8)
 project(simple_waypoint_follower)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -6,11 +7,13 @@ endif()
 
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(nav2_util REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 ament_auto_find_build_dependencies()
 
 ament_auto_add_executable(simple_wf
-  src/ike_waypoint_follower.cpp
+  src/simple_waypoint_follower.cpp
 )
 
 rosidl_generate_interfaces(simple_waypoint_follower_msgs
