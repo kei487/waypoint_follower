@@ -72,12 +72,13 @@ private:
   simple_waypoint_follower_msgs::msg::Waypoints waypoints_;
   double waypoint_radius_;
 
-  u_int32_t waypoint_id_;
+  uint32_t waypoint_id_{0};
   geometry_msgs::msg::PoseStamped robot_pose_;
 
-  bool get_robot_pose_;
-  bool _is_robot_wait;
-  double vel=0;
+  bool get_robot_pose_{false};
+  bool _is_robot_wait{false};
+  bool goal_reached_{false};
+  double vel{0.0};
 };
 
 }  // namespace simple_waypoint_follower

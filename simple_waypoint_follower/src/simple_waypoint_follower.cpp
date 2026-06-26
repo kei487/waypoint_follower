@@ -2,7 +2,8 @@
 
 #include "simple_waypoint_follower/simple_waypoint_follower.hpp"
 
-#include <nav2_util/robot_utils.hpp>
+#include <tf2/exceptions.h>
+#include <tf2/time.h>
 
 #include <yaml-cpp/yaml.h>
 
@@ -76,11 +77,9 @@ void SimpleWaypointFollower::cmd_vel_callback(const geometry_msgs::msg::Twist::S
     cmd_vel.linear.x=msg->linear.x;
     cmd_vel.angular.z=msg->angular.z;
   }
-  vel = cmd_vel.linear.x*cmd_vel.linear.x + cmd_vel.angular.z*cmd_vel.angular.z;
-    
-  // Publish command
+  vel = cmd_vel.linear.x * cmd_vel.linear.x + cmd_vel.angular.z * cmd_vel.angular.z;
+
   cmd_vel_pub_->publish(cmd_vel);
-  RCLCPP_INFO(this->get_logger(), "Sent cmd_vel: %lf",vel);
 }
 
 
@@ -94,9 +93,15 @@ void SimpleWaypointFollower::initServiceServer()
     (void)request_header;
 
     _is_robot_wait = false;
+    goal_reached_ = false;
+    waypoint_id_ = 0;
+
+    if (!waypoints_.waypoints.empty()) {
+      sendGoal(waypoints_.waypoints[waypoint_id_].pose);
+    }
 
     response->success = true;
-    response->message = "Called /start_waypoint_follower. Send goal done.";
+    response->message = "Called /restart_waypoint_follower. Restarted from first waypoint.";
   };
   restart_waypoint_follower_service_server_ =
     create_service<std_srvs::srv::Trigger>("restart_waypoint_follower", restart_waypoint_follower);
@@ -135,8 +140,11 @@ void SimpleWaypointFollower::readWaypointYaml()
       waypoint.pose.position.y = waypoint_yaml["position"]["y"].as<double>();
       waypoint.pose.orientation.w = cos(waypoint_yaml["euler_angle"]["z"].as<double>() / 2.);
       waypoint.pose.orientation.z = sin(waypoint_yaml["euler_angle"]["z"].as<double>() / 2.);
-      waypoint.robot_wait = waypoint_yaml["robot_wait"].as<bool>();
+      waypoint.robot_wait = waypoint_yaml["robot_wait"]
+        ? waypoint_yaml["robot_wait"].as<bool>()
+        : false;
 
+      waypoint.function.variable_waypoint_radius.waypoint_radius = static_cast<float>(waypoint_radius_);
       if (waypoint_yaml["functions"].IsDefined()) {
         for (const auto & function : waypoint_yaml["functions"]) {
           if (function["function"].as<std::string>() == "variable_waypoint_radius") {
@@ -146,24 +154,33 @@ void SimpleWaypointFollower::readWaypointYaml()
             }
           }
         }
-      } else {
-        waypoint.function.variable_waypoint_radius.waypoint_radius = waypoint_radius_;
       }
 
       waypoints_.waypoints.push_back(waypoint);
     }
   }
 
-  //waypoints_pub_->publish(waypoints_);
+  if (waypoints_.waypoints.empty()) {
+    RCLCPP_ERROR(
+      this->get_logger(), "No waypoints loaded from %s", waypoint_yaml_path_.c_str());
+  }
 }
 
 void SimpleWaypointFollower::getMapFrameRobotPose(
   geometry_msgs::msg::PoseStamped & map_frame_robot_pose)
 {
-  geometry_msgs::msg::PoseStamped pose;
-  if (nav2_util::getCurrentPose(pose, *tf_buffer_)) {
-    map_frame_robot_pose = pose;
+  try {
+    const auto transform = tf_buffer_->lookupTransform(
+      "map", "base_link", tf2::TimePointZero, tf2::durationFromSec(0.1));
+    map_frame_robot_pose.header.frame_id = "map";
+    map_frame_robot_pose.header.stamp = transform.header.stamp;
+    map_frame_robot_pose.pose.position.x = transform.transform.translation.x;
+    map_frame_robot_pose.pose.position.y = transform.transform.translation.y;
+    map_frame_robot_pose.pose.position.z = transform.transform.translation.z;
+    map_frame_robot_pose.pose.orientation = transform.transform.rotation;
     get_robot_pose_ = true;
+  } catch (const tf2::TransformException &) {
+    get_robot_pose_ = false;
   }
 }
 
@@ -182,10 +199,15 @@ bool SimpleWaypointFollower::isInsideWaypointArea(
 }
 
 void SimpleWaypointFollower::initsendGoal(){
-  this->waypoint_id_ = 1;
-  RCLCPP_INFO(get_logger(), "Send first Goal");
+  if (waypoints_.waypoints.empty()) {
+    RCLCPP_ERROR(get_logger(), "Cannot send goal: no waypoints loaded");
+    return;
+  }
+
+  waypoint_id_ = 0;
+  goal_reached_ = false;
+  RCLCPP_INFO(get_logger(), "Send first goal (waypoint id=%u)", waypoints_.waypoints[waypoint_id_].id);
   sendGoal(waypoints_.waypoints[waypoint_id_].pose);
-  RCLCPP_INFO(this->get_logger(), "Sent first goal");
 }
 
 void SimpleWaypointFollower::sendGoal(const geometry_msgs::msg::Pose & goal)
@@ -240,32 +262,36 @@ void SimpleWaypointFollower::cancelGoal()
 */
 void SimpleWaypointFollower::loop()
 {
-  RCLCPP_INFO(get_logger(), "Run SimpleWaypointFollower::loop");
-  /*
-  if (!waypoints_.waypoints.size()) {
-    this->loop_timer_->cancel();
-    //this->cancelGoal();
-    this->waypoint_id_ = 0;
-  }
-  */
-  if(vel<10e-6){
-    sendGoal(waypoints_.waypoints[waypoint_id_].pose);
-    RCLCPP_INFO(this->get_logger(), "ReSent goal");
+  if (goal_reached_ || waypoints_.waypoints.empty()) {
+    return;
   }
 
   getMapFrameRobotPose(robot_pose_);
-  if (get_robot_pose_) {
-    if (waypoints_.waypoints.size() - 1 != waypoint_id_) {
-      if (isInsideWaypointArea(robot_pose_.pose, waypoints_.waypoints[waypoint_id_])) {
-        RCLCPP_INFO(get_logger(), "Send next goal");
-        _is_robot_wait = waypoints_.waypoints[waypoint_id_].robot_wait;
-        sendGoal(waypoints_.waypoints[++waypoint_id_].pose);
-      }
-    } else {
-      if (isInsideWaypointArea(robot_pose_.pose, waypoints_.waypoints[waypoint_id_])) {
-        RCLCPP_INFO(get_logger(), "Goal Reached");
-      }
+  if (!get_robot_pose_) {
+    return;
+  }
+
+  const auto & current_waypoint = waypoints_.waypoints[waypoint_id_];
+
+  if (vel < 1e-5 && !_is_robot_wait &&
+    !isInsideWaypointArea(robot_pose_.pose, current_waypoint))
+  {
+    sendGoal(current_waypoint.pose);
+    RCLCPP_DEBUG(this->get_logger(), "Re-sent goal for waypoint id=%u", current_waypoint.id);
+  }
+
+  if (waypoint_id_ < waypoints_.waypoints.size() - 1) {
+    if (isInsideWaypointArea(robot_pose_.pose, current_waypoint)) {
+      _is_robot_wait = current_waypoint.robot_wait;
+      ++waypoint_id_;
+      RCLCPP_INFO(
+        get_logger(), "Waypoint id=%u reached. Sending next goal (waypoint id=%u)",
+        current_waypoint.id, waypoints_.waypoints[waypoint_id_].id);
+      sendGoal(waypoints_.waypoints[waypoint_id_].pose);
     }
+  } else if (isInsideWaypointArea(robot_pose_.pose, current_waypoint)) {
+    goal_reached_ = true;
+    RCLCPP_INFO(get_logger(), "All waypoints reached (final waypoint id=%u)", current_waypoint.id);
   }
 }
 

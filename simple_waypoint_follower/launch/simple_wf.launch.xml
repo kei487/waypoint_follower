@@ -5,7 +5,8 @@
   <node pkg="simple_waypoint_follower" exec="simple_wf" >
       <param name="waypoint_yaml_path"            value="$(var waypoint_yaml)"/>
       <param name="waypoint_radius"               value="0.5"/>
-      <remap from="/cmd_vel" to="/sim_cmd_vel"/>
+      <remap from="cmd_vel_sub" to="/cmd_vel"/>
+      <remap from="cmd_vel" to="/sim_cmd_vel"/>
   </node>
 
 </launch>
