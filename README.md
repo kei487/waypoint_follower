@@ -1,28 +1,28 @@
-# simple_waypoint_follower
+# waypoint_manager
 
-ROS 2 (Humble) 向けのシンプルなウェイポイントフォロワーです。YAML で定義したウェイポイント列に沿ってロボットをナビゲートします。Nav2 などのナビゲーションスタックが出力する速度指令を監視しつつ、`goal_pose` トピックへ次の目標姿勢を順番に送信します。
+ROS 2 (Humble) 向けのシンプルなウェイポイントフォロワーです。`waypoint_editor` と共通の CSV 形式で定義したウェイポイント列に沿ってロボットをナビゲートします。Nav2 などのナビゲーションスタックが出力する速度指令を監視しつつ、`goal_pose` トピックへ次の目標姿勢を順番に送信します。
 
 ## パッケージ構成
 
 | パッケージ | 説明 |
 |-----------|------|
-| `simple_waypoint_follower` | メインノード (`simple_wf`) |
-| `simple_waypoint_follower_msgs` | ウェイポイント定義用カスタムメッセージ |
+| `waypoint_manager` | メインノード (`waypoint_manager`) |
+| `waypoint_manager_msgs` | ウェイポイント定義用カスタムメッセージ |
 
 ## 動作概要
 
-1. 起動時に YAML ファイルからウェイポイントを読み込む
+1. 起動時に CSV ファイルからウェイポイントを読み込む
 2. 最初のウェイポイントを `goal_pose` に publish
 3. 100 ms 周期のタイマーでロボット位置（`map` フレーム）を監視
 4. 現在のウェイポイント半径内に入ると、次のウェイポイントへ目標を更新
 5. `robot_wait: true` のウェイポイントでは、到達後に `cmd_vel` をゼロにして停止を維持
-6. `/restart_waypoint_follower` サービスで先頭ウェイポイントから再開
+6. `/restart_waypoint_manager` サービスで先頭ウェイポイントから再開
 
 ```
-  YAML waypoints
+  CSV waypoints (waypoint_editor 共通形式)
         |
         v
-  simple_waypoint_follower ----goal_pose----> Nav2 / ナビゲータ
+  waypoint_manager ----goal_pose----> Nav2 / ナビゲータ
         ^                                        |
         |                                        v
    TF (map<-base)                          cmd_vel
@@ -37,36 +37,36 @@ ROS 2 (Humble) 向けのシンプルなウェイポイントフォロワーで�
 
 - ROS 2 Humble
 - `rclcpp`, `geometry_msgs`, `std_srvs`
-- `nav2_util`, `tf2_ros`, `yaml-cpp`
-- `simple_waypoint_follower_msgs`
+- `nav2_util`, `tf2_ros`
+- `waypoint_manager_msgs`
 
 ## ビルド
 
 ```bash
 cd ~/cursor_ws/waypint_ws   # ワークスペースルート
 source /opt/ros/humble/setup.bash
-colcon build --packages-select simple_waypoint_follower_msgs simple_waypoint_follower
+colcon build --packages-select waypoint_manager_msgs waypoint_manager
 source install/setup.bash
 ```
 
 ## 起動
 
 ```bash
-ros2 launch simple_waypoint_follower simple_wf.launch.xml
+ros2 launch waypoint_manager waypoint_manager.launch.xml
 ```
 
 別のウェイポイントファイルを使う場合:
 
 ```bash
-ros2 launch simple_waypoint_follower simple_wf.launch.xml \
-  waypoint_yaml:=/path/to/waypoint.yaml
+ros2 launch waypoint_manager waypoint_manager.launch.xml \
+  waypoint_csv:=/path/to/waypoint.csv
 ```
 
 パラメータのみ指定して起動する場合:
 
 ```bash
-ros2 run simple_waypoint_follower simple_wf --ros-args \
-  -p waypoint_yaml_path:=$(ros2 pkg prefix simple_waypoint_follower)/share/simple_waypoint_follower/config/waypoint_test.yaml \
+ros2 run waypoint_manager waypoint_manager --ros-args \
+  -p waypoint_csv_path:=$(ros2 pkg prefix waypoint_manager)/share/waypoint_manager/config/waypoint_test.csv \
   -p waypoint_radius:=0.5
 ```
 
@@ -74,8 +74,8 @@ ros2 run simple_waypoint_follower simple_wf --ros-args \
 
 | 名前 | 型 | デフォルト | 説明 |
 |------|-----|-----------|------|
-| `waypoint_yaml_path` | string | `waypoint.yaml` | ウェイポイント定義 YAML のパス |
-| `waypoint_radius` | double | `0.5` | 各ウェイポイントの到達判定半径（m）。YAML で個別指定がない場合に使用 |
+| `waypoint_csv_path` | string | `waypoint.csv` | ウェイポイント定義 CSV のパス |
+| `waypoint_radius` | double | `0.5` | 各ウェイポイントの到達判定半径（m）。CSV で個別指定がない場合に使用 |
 
 ## トピック
 
@@ -94,69 +94,67 @@ launch ファイルでは次の remap が設定されています:
 
 | サービス | 型 | 説明 |
 |---------|-----|------|
-| `/restart_waypoint_follower` | `std_srvs/Trigger` | ウェイポイント列を先頭から再開し、待機状態を解除 |
+| `/restart_waypoint_manager` | `std_srvs/Trigger` | ウェイポイント列を先頭から再開し、待機状態を解除 |
 
 ```bash
-ros2 service call /restart_waypoint_follower std_srvs/srv/Trigger
+ros2 service call /restart_waypoint_manager std_srvs/srv/Trigger
 ```
 
-## ウェイポイント YAML 形式
+## ウェイポイント CSV 形式（`waypoint_editor` 共通）
 
-```yaml
-waypoints:
-  - id: 1
-    position:
-      x: 6.13
-      y: 3.99
-    euler_angle:
-      z: 1.57          # yaw [rad]
-    functions:         # 省略可
-      - function: variable_waypoint_radius
-        waypoint_radius: 0.5
-    robot_wait: false  # 省略時は false。true で到達後に停止
-
-  - id: 2
-    position:
-      x: 4.68
-      y: 6.62
-    euler_angle:
-      z: 0.785
-    robot_wait: true
+```csv
+id,pose_x,pose_y,pose_z,rot_x,rot_y,rot_z,rot_w,waypoint_radius,robot_wait,command,
+0,6.13,3.99,0,0,0,0.707,0.707,0.5,false,,
+1,4.68,6.62,0,0,0,0.383,0.924,0.5,true,,
+2,2.19,7.05,0,0,0,0.0,1.0,0.5,false,wait,
 ```
 
 ### フィールド説明
 
 - `id`: ウェイポイント識別子（ログ表示用）
-- `position.x/y`: `map` フレーム上の位置 [m]
-- `euler_angle.z`: 向き [rad]（yaw のみ使用）
-- `functions`: オプション。`variable_waypoint_radius` で到達半径を個別指定
-- `robot_wait`: 到達後にロボットを停止させるか。`true` のとき `/restart_waypoint_follower` で再開
+- `pose_x/y/z`, `rot_x/y/z/w`: `map` フレーム上の位置とクォータニオン
+- `waypoint_radius`: 到達判定半径 [m]（省略時はパラメータ `waypoint_radius`）
+- `robot_wait`: 到達後にロボットを停止させるか（`true`/`false`）。`true` のとき `/restart_waypoint_manager` で再開
+- `command`: `waypoint_editor` 用の任意コマンド列（本ノードでは未使用）
+
+`waypoint_radius` / `robot_wait` 列が無い従来形式の CSV も読み込めます（半径はパラメータ値、`robot_wait` は `false`）。
 
 サンプルファイル:
 
-- `simple_waypoint_follower/config/waypoint_test.yaml` — 3 点のテスト経路
-- `simple_waypoint_follower/config/waypoint.yaml` — 6 点の本番用経路
+- `waypoint_manager/config/waypoint_test.csv` — 3 点のテスト経路
+- `waypoint_manager/config/waypoint.csv` — 6 点の本番用経路
+
+### 旧 YAML からの変換
+
+以前の YAML コンフィグは次のスクリプトで CSV に変換できます（`python3-yaml` / PyYAML が必要）:
+
+```bash
+# ワークスペース内のスクリプトを直接実行
+./src/waypoint_manager/waypoint_manager/scripts/yaml_to_csv.sh /path/to/waypoint.yaml
+
+# 出力先を指定
+./src/waypoint_manager/waypoint_manager/scripts/yaml_to_csv.sh \
+  -o /path/to/waypoint.csv /path/to/waypoint.yaml
+
+# 複数ファイル（各入力と同名の .csv を生成）
+./src/waypoint_manager/waypoint_manager/scripts/yaml_to_csv.sh -r 0.5 a.yaml b.yaml
+
+# インストール後
+ros2 run waypoint_manager yaml_to_csv.sh /path/to/waypoint.yaml
+```
+
+変換内容:
+
+- `position` + `euler_angle.z` → `pose_*` / `rot_*`（yaw からクォータニオンへ）
+- `functions.variable_waypoint_radius` → `waypoint_radius`（未指定時は `-r` の値）
+- `robot_wait` → `robot_wait`（未指定時は `false`）
 
 ## 必要条件（実行環境）
 
 - `map` → `base_link`（または `base_footprint`）の TF が配信されていること
 - ナビゲーションスタックが `goal_pose` を受け取り、`cmd_vel` を出力すること
 
-TF が無い場合、位置取得に失敗しウェイポイント到達判定は行われません（エラーログが `nav2_util` から出力されます）。
-
-## デバッグ時の修正内容（2025-06）
-
-以下の問題を修正済みです:
-
-1. **ウェイポイント index のずれ** — 初期 `waypoint_id_` が `1` のため先頭ウェイポイントをスキップしていた → `0` から開始
-2. **未初期化メンバ変数** — `_is_robot_wait`, `get_robot_pose_` をコンストラクタ前に初期化
-3. **YAML パース** — `robot_wait` 未指定時の例外、`functions` 未指定時の半径未設定を修正
-4. **ゴール再送のスパム** — 停止中に 100 ms ごとに goal を再送していた → 到達圏外かつ待機中でない場合のみ再送
-5. **待機中の誤再送** — `robot_wait` 中も goal を再送していた → 待機フラグを考慮
-6. **ログ過多** — ループ・cmd_vel コールバックの INFO ログを整理
-7. **launch remap** — Nav2 の `/cmd_vel` を `cmd_vel_sub` へ正しく接続
-8. **restart サービス** — 先頭ウェイポイントへのリセットと goal 再送を追加
-9. **TF 未取得時のログスパム** — `lookupTransform` の例外を握りつぶし、TF 未接続時にエラーログが連続出力されないよう改善
+TF が無い場合、位置取得に失敗しウェイポイント到達判定は行われません（ログスパムは抑止済み）。
 
 ## ライセンス
 
