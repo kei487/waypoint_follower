@@ -1,4 +1,4 @@
-# simple_waypoint_follower
+# waypoint_manager
 
 ROS 2 (Humble) 向けのシンプルなウェイポイントフォロワーです。YAML で定義したウェイポイント列に沿ってロボットをナビゲートします。Nav2 などのナビゲーションスタックが出力する速度指令を監視しつつ、`goal_pose` トピックへ次の目標姿勢を順番に送信します。
 WayponitをCSVで管理するバージョン
@@ -7,8 +7,8 @@ WayponitをCSVで管理するバージョン
 
 | パッケージ | 説明 |
 |-----------|------|
-| `simple_waypoint_follower` | メインノード (`simple_wf`) |
-| `simple_waypoint_follower_msgs` | ウェイポイント定義用カスタムメッセージ |
+| `waypoint_manager` | メインノード (`waypoint_manager`) |
+| `waypoint_manager_msgs` | ウェイポイント定義用カスタムメッセージ |
 
 ## 動作概要
 
@@ -17,13 +17,13 @@ WayponitをCSVで管理するバージョン
 3. 100 ms 周期のタイマーでロボット位置（`map` フレーム）を監視
 4. 現在のウェイポイント半径内に入ると、次のウェイポイントへ目標を更新
 5. `robot_wait: true` のウェイポイントでは、到達後に `cmd_vel` をゼロにして停止を維持
-6. `/restart_waypoint_follower` サービスで先頭ウェイポイントから再開
+6. `/restart_waypoint_manager` サービスで先頭ウェイポイントから再開
 
 ```
   YAML waypoints
         |
         v
-  simple_waypoint_follower ----goal_pose----> Nav2 / ナビゲータ
+  waypoint_manager ----goal_pose----> Nav2 / ナビゲータ
         ^                                        |
         |                                        v
    TF (map<-base)                          cmd_vel
@@ -39,35 +39,35 @@ WayponitをCSVで管理するバージョン
 - ROS 2 Humble
 - `rclcpp`, `geometry_msgs`, `std_srvs`
 - `nav2_util`, `tf2_ros`, `yaml-cpp`
-- `simple_waypoint_follower_msgs`
+- `waypoint_manager_msgs`
 
 ## ビルド
 
 ```bash
 cd ~/cursor_ws/waypint_ws   # ワークスペースルート
 source /opt/ros/humble/setup.bash
-colcon build --packages-select simple_waypoint_follower_msgs simple_waypoint_follower
+colcon build --packages-select waypoint_manager_msgs waypoint_manager
 source install/setup.bash
 ```
 
 ## 起動
 
 ```bash
-ros2 launch simple_waypoint_follower simple_wf.launch.xml
+ros2 launch waypoint_manager waypoint_manager.launch.xml
 ```
 
 別のウェイポイントファイルを使う場合:
 
 ```bash
-ros2 launch simple_waypoint_follower simple_wf.launch.xml \
+ros2 launch waypoint_manager waypoint_manager.launch.xml \
   waypoint_yaml:=/path/to/waypoint.yaml
 ```
 
 パラメータのみ指定して起動する場合:
 
 ```bash
-ros2 run simple_waypoint_follower simple_wf --ros-args \
-  -p waypoint_yaml_path:=$(ros2 pkg prefix simple_waypoint_follower)/share/simple_waypoint_follower/config/waypoint_test.yaml \
+ros2 run waypoint_manager waypoint_manager --ros-args \
+  -p waypoint_yaml_path:=$(ros2 pkg prefix waypoint_manager)/share/waypoint_manager/config/waypoint_test.yaml \
   -p waypoint_radius:=0.5
 ```
 
@@ -95,10 +95,10 @@ launch ファイルでは次の remap が設定されています:
 
 | サービス | 型 | 説明 |
 |---------|-----|------|
-| `/restart_waypoint_follower` | `std_srvs/Trigger` | ウェイポイント列を先頭から再開し、待機状態を解除 |
+| `/restart_waypoint_manager` | `std_srvs/Trigger` | ウェイポイント列を先頭から再開し、待機状態を解除 |
 
 ```bash
-ros2 service call /restart_waypoint_follower std_srvs/srv/Trigger
+ros2 service call /restart_waypoint_manager std_srvs/srv/Trigger
 ```
 
 ## ウェイポイント YAML 形式
@@ -131,19 +131,19 @@ waypoints:
 - `position.x/y`: `map` フレーム上の位置 [m]
 - `euler_angle.z`: 向き [rad]（yaw のみ使用）
 - `functions`: オプション。`variable_waypoint_radius` で到達半径を個別指定
-- `robot_wait`: 到達後にロボットを停止させるか。`true` のとき `/restart_waypoint_follower` で再開
+- `robot_wait`: 到達後にロボットを停止させるか。`true` のとき `/restart_waypoint_manager` で再開
 
 サンプルファイル:
 
-- `simple_waypoint_follower/config/waypoint_test.yaml` — 3 点のテスト経路
-- `simple_waypoint_follower/config/waypoint.yaml` — 6 点の本番用経路
+- `waypoint_manager/config/waypoint_test.yaml` — 3 点のテスト経路
+- `waypoint_manager/config/waypoint.yaml` — 6 点の本番用経路
 
 ## 必要条件（実行環境）
 
 - `map` → `base_link`（または `base_footprint`）の TF が配信されていること
 - ナビゲーションスタックが `goal_pose` を受け取り、`cmd_vel` を出力すること
 
-TF が無い場合、位置取得に失敗しウェイポイント到達判定は行われません（エラーログが `nav2_util` から出力されます）。
+TF が無い場合、位置取得に失敗しウェイポイント到達判定は行われません（ログスパムは抑止済み）。
 
 ## デバッグ時の修正内容（2025-06）
 

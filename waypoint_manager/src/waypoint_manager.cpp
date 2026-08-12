@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include "simple_waypoint_follower/simple_waypoint_follower.hpp"
+#include "waypoint_manager/waypoint_manager.hpp"
 
 #include <tf2/exceptions.h>
 #include <tf2/time.h>
 
 #include <yaml-cpp/yaml.h>
 
-namespace simple_waypoint_follower
+namespace waypoint_manager
 {
 
-SimpleWaypointFollower::SimpleWaypointFollower(const rclcpp::NodeOptions & options)
-: Node("simple_waypoint_follower", options)
+WaypointManager::WaypointManager(const rclcpp::NodeOptions & options)
+: Node("waypoint_manager", options)
 {
   getParam();
 
@@ -27,11 +27,11 @@ SimpleWaypointFollower::SimpleWaypointFollower(const rclcpp::NodeOptions & optio
   initTimer(); 
 }
 
-void SimpleWaypointFollower::getParam()
+void WaypointManager::getParam()
 {
   /*
   this->param_listener_ =
-    std::make_shared<simple_waypoint_follower::ParamListener>(this->get_node_parameters_interface());
+    std::make_shared<waypoint_manager::ParamListener>(this->get_node_parameters_interface());
   this->params_ = param_listener_->get_params();
 
   waypoint_yaml_path_ = this->params_.waypoint_yaml_path;
@@ -44,7 +44,7 @@ void SimpleWaypointFollower::getParam()
   waypoint_radius_ = get_parameter("waypoint_radius").as_double();
 }
 
-void SimpleWaypointFollower::initTf()
+void WaypointManager::initTf()
 {
   tf_buffer_.reset();
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
@@ -52,7 +52,7 @@ void SimpleWaypointFollower::initTf()
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
-void SimpleWaypointFollower::initPublisher()
+void WaypointManager::initPublisher()
 {
   goal_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
     "goal_pose", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
@@ -61,14 +61,14 @@ void SimpleWaypointFollower::initPublisher()
 }
 
 
-void SimpleWaypointFollower::initSubscription()
+void WaypointManager::initSubscription()
 {
   cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
     "cmd_vel_sub", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable(), 
-    std::bind(&SimpleWaypointFollower::cmd_vel_callback, this, std::placeholders::_1));
+    std::bind(&WaypointManager::cmd_vel_callback, this, std::placeholders::_1));
 }
 
-void SimpleWaypointFollower::cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg){
+void WaypointManager::cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg){
   geometry_msgs::msg::Twist cmd_vel;
   if(_is_robot_wait){
     cmd_vel.linear.x=0;
@@ -83,9 +83,9 @@ void SimpleWaypointFollower::cmd_vel_callback(const geometry_msgs::msg::Twist::S
 }
 
 
-void SimpleWaypointFollower::initServiceServer()
+void WaypointManager::initServiceServer()
 {
-  auto restart_waypoint_follower =
+  auto restart_waypoint_manager =
     [this](
       const std::shared_ptr<rmw_request_id_t> request_header,
       [[maybe_unused]] const std::shared_ptr<std_srvs::srv::Trigger_Request> request,
@@ -101,29 +101,29 @@ void SimpleWaypointFollower::initServiceServer()
     }
 
     response->success = true;
-    response->message = "Called /restart_waypoint_follower. Restarted from first waypoint.";
+    response->message = "Called /restart_waypoint_manager. Restarted from first waypoint.";
   };
-  restart_waypoint_follower_service_server_ =
-    create_service<std_srvs::srv::Trigger>("restart_waypoint_follower", restart_waypoint_follower);
+  restart_waypoint_manager_service_server_ =
+    create_service<std_srvs::srv::Trigger>("restart_waypoint_manager", restart_waypoint_manager);
 
 }
 /*
-void SimpleWaypointFollower::initActionClient()
+void WaypointManager::initActionClient()
 {
   navigate_to_goal_action_client_ = rclcpp_action::create_client<NavigateToGoal>(
     this->get_node_base_interface(), this->get_node_graph_interface(),
     this->get_node_logging_interface(), this->get_node_waitables_interface(), "navigate_to_goal");
 }
 */
-void SimpleWaypointFollower::initTimer()
+void WaypointManager::initTimer()
 {
   using namespace std::chrono_literals;
 
   loop_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds{100ms}, std::bind(&SimpleWaypointFollower::loop, this));
+    std::chrono::milliseconds{100ms}, std::bind(&WaypointManager::loop, this));
 }
 
-void SimpleWaypointFollower::readWaypointYaml()
+void WaypointManager::readWaypointYaml()
 {
   YAML::Node waypoints_yaml = YAML::LoadFile(waypoint_yaml_path_);
 
@@ -133,7 +133,7 @@ void SimpleWaypointFollower::readWaypointYaml()
 
   if (!waypoints_yaml["waypoints"].IsNull()) {
     for (const auto & waypoint_yaml : waypoints_yaml["waypoints"]) {
-      simple_waypoint_follower_msgs::msg::Waypoint waypoint;
+      waypoint_manager_msgs::msg::Waypoint waypoint;
 
       waypoint.id = waypoint_yaml["id"].as<uint32_t>();
       waypoint.pose.position.x = waypoint_yaml["position"]["x"].as<double>();
@@ -166,7 +166,7 @@ void SimpleWaypointFollower::readWaypointYaml()
   }
 }
 
-void SimpleWaypointFollower::getMapFrameRobotPose(
+void WaypointManager::getMapFrameRobotPose(
   geometry_msgs::msg::PoseStamped & map_frame_robot_pose)
 {
   try {
@@ -184,8 +184,8 @@ void SimpleWaypointFollower::getMapFrameRobotPose(
   }
 }
 
-bool SimpleWaypointFollower::isInsideWaypointArea(
-  const geometry_msgs::msg::Pose & robot_pose, const simple_waypoint_follower_msgs::msg::Waypoint & waypoint)
+bool WaypointManager::isInsideWaypointArea(
+  const geometry_msgs::msg::Pose & robot_pose, const waypoint_manager_msgs::msg::Waypoint & waypoint)
 {
   auto distance = std::hypot(
     robot_pose.position.x - waypoint.pose.position.x,
@@ -198,7 +198,7 @@ bool SimpleWaypointFollower::isInsideWaypointArea(
   return false;
 }
 
-void SimpleWaypointFollower::initsendGoal(){
+void WaypointManager::initsendGoal(){
   if (waypoints_.waypoints.empty()) {
     RCLCPP_ERROR(get_logger(), "Cannot send goal: no waypoints loaded");
     return;
@@ -210,7 +210,7 @@ void SimpleWaypointFollower::initsendGoal(){
   sendGoal(waypoints_.waypoints[waypoint_id_].pose);
 }
 
-void SimpleWaypointFollower::sendGoal(const geometry_msgs::msg::Pose & goal)
+void WaypointManager::sendGoal(const geometry_msgs::msg::Pose & goal)
 {
   /*
   using namespace std::chrono_literals;
@@ -244,7 +244,7 @@ void SimpleWaypointFollower::sendGoal(const geometry_msgs::msg::Pose & goal)
 }
 
 /*
-void SimpleWaypointFollower::cancelGoal()
+void WaypointManager::cancelGoal()
 {
   using namespace std::chrono_literals;
 
@@ -260,7 +260,7 @@ void SimpleWaypointFollower::cancelGoal()
   auto goal_handle_future = navigate_to_goal_action_client_->async_cancel_all_goals();
 }
 */
-void SimpleWaypointFollower::loop()
+void WaypointManager::loop()
 {
   if (goal_reached_ || waypoints_.waypoints.empty()) {
     return;
@@ -295,13 +295,13 @@ void SimpleWaypointFollower::loop()
   }
 }
 
-}  // namespace simple_waypoint_follower
+}  // namespace waypoint_manager
 
 int main(int argc, char **argv)
 {
 	rclcpp::init(argc,argv);
   rclcpp::NodeOptions opt;
-	auto node = std::make_shared<simple_waypoint_follower::SimpleWaypointFollower>(opt);
+	auto node = std::make_shared<waypoint_manager::WaypointManager>(opt);
 	rclcpp::spin(node);
 	return 0;
 }
