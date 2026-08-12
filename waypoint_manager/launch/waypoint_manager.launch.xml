@@ -1,12 +1,12 @@
 <launch>
 
-  <arg name ="waypoint_yaml"  default="$(find-pkg-share waypoint_manager)/config/waypoint_test.yaml"/>
+  <arg name ="waypoint_csv"  default="$(find-pkg-share waypoint_manager)/config/waypoint_test.csv"/>
 
   <node pkg="waypoint_manager" exec="waypoint_manager" >
-      <param name="waypoint_yaml_path"            value="$(var waypoint_yaml)"/>
+      <param name="waypoint_csv_path"             value="$(var waypoint_csv)"/>
       <param name="waypoint_radius"               value="0.5"/>
       <remap from="cmd_vel_sub" to="/cmd_vel"/>
       <remap from="cmd_vel" to="/sim_cmd_vel"/>
-  </node>
+    </node>
 
 </launch>

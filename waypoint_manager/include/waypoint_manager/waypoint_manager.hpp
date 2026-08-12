@@ -37,7 +37,7 @@ protected:
 //  void initActionClient();
   void initTimer();
 
-  void readWaypointYaml();
+  void readWaypointCsv();
   void getMapFrameRobotPose(geometry_msgs::msg::PoseStamped & map_frame_robot_pose);
   bool isInsideWaypointArea(
     const geometry_msgs::msg::Pose & robot_pose, const waypoint_manager_msgs::msg::Waypoint & waypoint);
@@ -68,7 +68,7 @@ private:
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
-  std::string waypoint_yaml_path_;
+  std::string waypoint_csv_path_;
   waypoint_manager_msgs::msg::Waypoints waypoints_;
   double waypoint_radius_;
 
