@@ -124,6 +124,31 @@ id,pose_x,pose_y,pose_z,rot_x,rot_y,rot_z,rot_w,waypoint_radius,robot_wait,comma
 - `waypoint_manager/config/waypoint_test.csv` — 3 点のテスト経路
 - `waypoint_manager/config/waypoint.csv` — 6 点の本番用経路
 
+### 旧 YAML からの変換
+
+以前の YAML コンフィグは次のスクリプトで CSV に変換できます（`python3-yaml` / PyYAML が必要）:
+
+```bash
+# ワークスペース内のスクリプトを直接実行
+./src/waypoint_manager/waypoint_manager/scripts/yaml_to_csv.sh /path/to/waypoint.yaml
+
+# 出力先を指定
+./src/waypoint_manager/waypoint_manager/scripts/yaml_to_csv.sh \
+  -o /path/to/waypoint.csv /path/to/waypoint.yaml
+
+# 複数ファイル（各入力と同名の .csv を生成）
+./src/waypoint_manager/waypoint_manager/scripts/yaml_to_csv.sh -r 0.5 a.yaml b.yaml
+
+# インストール後
+ros2 run waypoint_manager yaml_to_csv.sh /path/to/waypoint.yaml
+```
+
+変換内容:
+
+- `position` + `euler_angle.z` → `pose_*` / `rot_*`（yaw からクォータニオンへ）
+- `functions.variable_waypoint_radius` → `waypoint_radius`（未指定時は `-r` の値）
+- `robot_wait` → `robot_wait`（未指定時は `false`）
+
 ## 必要条件（実行環境）
 
 - `map` → `base_link`（または `base_footprint`）の TF が配信されていること

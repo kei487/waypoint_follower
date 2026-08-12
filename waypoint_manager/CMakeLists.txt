@@ -24,6 +24,7 @@ ament_auto_add_executable(waypoint_manager
 install(TARGETS waypoint_manager DESTINATION lib/${PROJECT_NAME} )
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+install(PROGRAMS scripts/yaml_to_csv.sh DESTINATION lib/${PROJECT_NAME})
 
 
 if(BUILD_TESTING)
